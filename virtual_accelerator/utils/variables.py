@@ -36,7 +36,9 @@ def get_name_to_epics_mapping(fname: str) -> dict[str, str]:
     )
 
 
-def get_name_or_overlay_to_epics_mapping(fname: str, beampath: str = None) -> dict[str, str]:
+def get_name_or_overlay_to_epics_mapping(
+    fname: str, beampath: str = None
+) -> dict[str, str]:
     """
     Get the mapping from element name or bmad overlay to control system
     PV prefix from file
@@ -66,8 +68,15 @@ def get_name_or_overlay_to_epics_mapping(fname: str, beampath: str = None) -> di
     return dict(zip(name_data["Element"], name_data["Control System Name"]))
 
 
-def get_epics_to_name_or_overlay_mapping(fname: str, beampath: str = None) -> dict[str, str]:
-    return {v: k for k, v in get_name_or_overlay_to_epics_mapping(fname, beampath=beampath).items()}
+def get_epics_to_name_or_overlay_mapping(
+    fname: str, beampath: str = None
+) -> dict[str, str]:
+    return {
+        v: k
+        for k, v in get_name_or_overlay_to_epics_mapping(
+            fname, beampath=beampath
+        ).items()
+    }
 
 
 def get_element_attr_mapping():
