@@ -65,8 +65,10 @@ def get_cu_hxr_bmad_model(
 
     # get supported variables from tao lattice and get mapping from control
     # system device names to bmad element names
-    control_name_to_element_name = get_epics_to_name_or_overlay_mapping()
-    variables = get_variables(tao)
+    database_path = os.path.join(LCLS_LATTICE, "bmad/conversion/from_oracle/lcls_elements.csv")
+    control_name_to_element_name = get_epics_to_name_or_overlay_mapping(database_path)
+    element_name_to_control_name = {v: k for k, v in control_name_to_element_name.items()}
+    variables = get_variables(tao, element_name_to_control_name)
 
     # Define the controllable and observable variables
     control_variables, observable_variables = split_control_and_observable(variables)

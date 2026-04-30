@@ -35,7 +35,7 @@ def get_normalized_element_names(tao: Tao):
 
 def get_variables(
     tao: Tao,
-    device_mapping: dict[str, str] = None,
+    device_mapping: dict[str, str],
     element_attr_mapping: dict[str, dict[str, dict[str, Any]]] = None,
 ):
     """
@@ -49,7 +49,7 @@ def get_variables(
     ----------
     tao : Tao
         Tao object containing the lattice elements.
-    device_mapping : dict[str, str], optional
+    device_mapping : dict[str, str]
         Mapping of lattice element name -> control-system PV prefix.
     element_attr_mapping : dict[str, dict[str, dict[str, Any]]], optional
         Device-type -> PV attribute -> variable specification mapping
@@ -70,7 +70,6 @@ def get_variables(
 
     """
     all_variables = {}
-    device_mapping = device_mapping or get_name_or_overlay_to_epics_mapping()
     element_attr_mapping = element_attr_mapping or get_element_attr_mapping()
 
     normalized_elements = get_normalized_element_names(tao)
