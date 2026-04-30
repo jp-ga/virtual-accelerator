@@ -1,7 +1,6 @@
 import os
 import importlib.util
 
-from pathlib import Path
 import pytest
 from virtual_accelerator.tests._bmad_model_test_utils import (
     HAS_BMAD_DEPS,
@@ -14,6 +13,7 @@ from virtual_accelerator.models.cu_hxr import (
     get_cu_hxr_bmad_model,
     get_cu_hxr_cheetah_model,
 )
+
 
 def _has_module(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
