@@ -129,10 +129,11 @@ def get_variables(
     return all_variables
 
 
-def get_cu_hxr_screen_variables(
+def get_screen_variables(
     tao: Tao,
     control_variables: dict[str, NDVariable],
     screen_list: list[str],
+    config_path: Path,
 ) -> tuple[dict[str, NDVariable], dict[str, dict[str, Any]], list[str]]:
     """
     Get screen attributes for cu_hxr from yaml file
@@ -144,8 +145,9 @@ def get_cu_hxr_screen_variables(
     control_variables : dict[str, NDVariable]
         Dictionary of control variables.
     screen_list : list[str]
-        List of screen elements to include. One or more of: ['OTRH1', 'OTRH2', 'OTR2', 'OTR3', 'OTR4',
-                                                             'OTR11', 'OTR12', 'OTR21', 'OTRDMP']
+        List of screen elements to include.
+    config_path : Path
+        Path to the YAML configuration file containing screen attributes.
 
     Returns
     -------
@@ -159,7 +161,6 @@ def get_cu_hxr_screen_variables(
         - used_screens: List of screens that were found in the lattice and included in the control variables.
     """
 
-    config_path = Path(__file__).parent / ".." / "utils" / "cu_hxr_profmon_info.yaml"
     with open(config_path) as f:
         screen_data = yaml.safe_load(f)
 

@@ -54,7 +54,7 @@ def get_cu_hxr_bmad_model(
     from virtual_accelerator.bmad.cu_transformer import CUBmadTransformer
     from virtual_accelerator.bmad.variables import (
         get_variables,
-        get_cu_hxr_screen_variables,
+        get_screen_variables,
     )
 
     # create Tao instance
@@ -78,8 +78,9 @@ def get_cu_hxr_bmad_model(
 
     # handle Profile Monitors
     screens = ["OTR3", "OTR4", "OTR11", "OTR12", "OTR21"]
-    control_variables, screen_attributes, used_screens = get_cu_hxr_screen_variables(
-        tao, control_variables, screens
+    config_path = Path(__file__).parent / ".." / "utils" / "cu_hxr_profmon_info.yaml"
+    control_variables, screen_attributes, used_screens = get_screen_variables(
+        tao, control_variables, screens, config_path
     )
 
     # Create transformer that handles maps get/set calls and updates the beam distribution
