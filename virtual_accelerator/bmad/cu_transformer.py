@@ -94,7 +94,7 @@ class CUBmadTransformer(BmadTransformer):
         elif device_type == "Solenoid":
             if attr in ["BCTRL", "BACT", "BDES"]:
                 return ele_attr["BS_FIELD"] * 10  # TODO confirm this conversion
-        elif device_type in ["KLYS", "Lcavity"]:
+        elif device_type in ["KLYS", "Lcavity"]: # TODO: handle KLYS properly
             if attr in ["ENLD", "ADES"]:
                 tao.ele_control_var(element_name)
                 return tao.ele_control_var(element_name)["ENLD_MEV"]
@@ -102,7 +102,7 @@ class CUBmadTransformer(BmadTransformer):
                 return tao.ele_control_var(element_name)["PHASE_DEG"]
             if attr == "BEAMCODE1_STAT":
                 return tao.ele_control_var(element_name)["IN_USE"]
-        elif device_type in ["HKicker", "VKicker", "EFC"]:
+        elif device_type in ["HKicker", "VKicker", "EFC"]: # TODO: handle EFC properly
             return tao.ele_gen_attribs(element_name)["BL_KICK"]
         elif device_type == "Monitor":
             if attr == "Image:ArrayData":
