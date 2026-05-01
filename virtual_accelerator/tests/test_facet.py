@@ -44,3 +44,11 @@ class TestFACET2Bmad:
         # test specific output from one of the screens to ensure it's properly set up
         output = model.get("OTRS:IN10:571:Image:ArrayData")
         assert output.shape == (1392, 1040)
+
+        # test to make sure that changing an upstream variable that should affect the screen output
+        current_value = model.get("QUAD:IN10:371:BCTRL")
+        model.set({"QUAD:IN10:371:BCTRL": current_value + 0.1})
+        new_output = model.get("OTRS:IN10:571:Image:ArrayData")
+        assert not (new_output == output).all()  # Check that the screen output changed
+
+    

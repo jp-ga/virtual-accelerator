@@ -2,15 +2,15 @@ from virtual_accelerator.bmad.factory import BmadModelSpec, build_bmad_model
 
 
 def get_facet_bmad_model(
-    start_element="PROF241", end_element="END", track_beam=False, custom_beam_path=None
+    start_element="PR10241", end_element="END", track_beam=False, custom_beam_path=None
 ):
     """
-    Get the LUMEBmadModel for the FACET-II lattice from PROF241 to END.
+    Get the LUMEBmadModel for the FACET-II lattice from PRR10241 to END.
 
     Parameters
     -------------
     start_element: str, optional
-        The starting element for the model. Default is "PROF241".
+        The starting element for the model. Default is "PR10241".
     end_element: str, optional
         The ending element for the model. Default is "END".
     track_beam: bool, optional
@@ -29,10 +29,10 @@ def get_facet_bmad_model(
         feature="FACET-II Bmad model",
         lattice_env_var="FACET2_LATTICE",
         tao_init_relpath="bmad/models/f2_elec/tao.init",
-        mapping_beampath="F2_ELEC",
+        mapping_beampath=None,
         screens=("PR10571", "PR10711"),
         profmon_config_filename="facet2_profmon_info.yaml",
-        default_track_start="PROF241",
+        default_track_start="PR10241",
     )
     return build_bmad_model(
         spec=spec,
