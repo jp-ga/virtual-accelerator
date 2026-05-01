@@ -83,7 +83,7 @@ docs = [
 ]
 
 [tool.setuptools.packages.find]
-include = [ "virtual_accelerator", ]
+include = [ "virtual_accelerator*", ]
 namespaces = false
 
 [tool.setuptools.package-data]

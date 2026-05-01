@@ -54,4 +54,3 @@ with a FACET BMAD model exposing `input_beam` and `output_beam` as
 
 Creating the model instances requires the `$LCLS_LATTICE` environment variable to be set to a location containing the
 contents of the lcls-lattice repo https://github.com/slaclab/lcls-lattice.
-

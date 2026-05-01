@@ -10,6 +10,10 @@ pytest.importorskip(
     "lume_torch",
     reason="requires lume-torch: pip install virtual-accelerator[surrogate]",
 )
+pytest.importorskip(
+    "lcls_cu_inj_model",
+    reason="requires packaged Cu injector model: pip install virtual-accelerator[surrogate]",
+)
 
 from virtual_accelerator.models.staged_model import (  # noqa: E402
     StagedModel,
