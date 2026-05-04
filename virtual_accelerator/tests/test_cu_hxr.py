@@ -3,6 +3,14 @@ import importlib.util
 
 from pathlib import Path
 import pytest
+from virtual_accelerator.tests._bmad_model_test_utils import (
+    HAS_BMAD_DEPS,
+    TEST_BEAM_PATH,
+    assert_bmad_model_initialization,
+    assert_bmad_model_twiss_outputs,
+    assert_bmad_model_track_beam_custom_path,
+    assert_element_pvs_match_tao_lattice,
+)
 from virtual_accelerator.models.cu_hxr import (
     get_cu_hxr_bmad_model,
     get_cu_hxr_cheetah_model,
@@ -81,6 +89,18 @@ class TestCUHXRBmad:
         model.set({"KLYS:LI21:31:ENLD": enld})
         ampl = model.get("KLYS:LI21:31:ENLD")
         assert ampl == enld
+
+    def test_quadrupole_pvs_match_tao_lattice(self):
+        model = get_cu_hxr_bmad_model()
+        assert_element_pvs_match_tao_lattice(model, "Quadrupole")
+
+    def test_hkicker_pvs_match_tao_lattice(self):
+        model = get_cu_hxr_bmad_model()
+        assert_element_pvs_match_tao_lattice(model, "HKicker")
+
+    def test_vkicker_pvs_match_tao_lattice(self):
+        model = get_cu_hxr_bmad_model()
+        assert_element_pvs_match_tao_lattice(model, "VKicker")
 
 
 @pytest.mark.skipif(
