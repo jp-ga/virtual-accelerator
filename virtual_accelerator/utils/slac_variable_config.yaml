@@ -50,7 +50,7 @@ Quadrupole:
       1: TRIM
       2: PERTURB
       3: BCON_TO_BDES
-      4: BACT_TO_BDES      
+      4: BACT_TO_BDES
 
 Solenoid:
   BCTRL:
@@ -93,7 +93,7 @@ Solenoid:
       1: TRIM
       2: PERTURB
       3: BCON_TO_BDES
-      4: BACT_TO_BDES      
+      4: BACT_TO_BDES
 
 HorizontalCorrector:
   BCTRL:
@@ -136,7 +136,7 @@ HorizontalCorrector:
       1: TRIM
       2: PERTURB
       3: BCON_TO_BDES
-      4: BACT_TO_BDES      
+      4: BACT_TO_BDES
 
 VerticalCorrector:
   BCTRL:
@@ -179,7 +179,7 @@ VerticalCorrector:
       1: TRIM
       2: PERTURB
       3: BCON_TO_BDES
-      4: BACT_TO_BDES      
+      4: BACT_TO_BDES
 
 Screen:
   Image:ArrayData:

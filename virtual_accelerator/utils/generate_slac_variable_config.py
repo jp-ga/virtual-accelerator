@@ -53,7 +53,7 @@ def create_magnet_config(b_unit):
 
 def generate_slac_variable_config():
     """Generate the SLAC variable configuration dictionary."""
-    
+
     config = {
         "BPM": {
             "X": scalar_var(unit="mm", default_value=None),
@@ -85,23 +85,24 @@ def generate_slac_variable_config():
             "PREQ": scalar_var(unit="MV", read_only=False),
         },
     }
-    
+
     return config
 
 
 def save_config_to_yaml(config, output_path):
     """Save the configuration dictionary to a YAML file."""
-    
+
     class NullPresenter(yaml.SafeDumper):
         """Custom YAML dumper to represent None as NULL."""
+
         pass
-    
+
     def represent_none(self, _):
-        return self.represent_scalar('tag:yaml.org,2002:null', 'NULL')
-    
+        return self.represent_scalar("tag:yaml.org,2002:null", "NULL")
+
     NullPresenter.add_representer(type(None), represent_none)
-    
-    with open(output_path, 'w') as f:
+
+    with open(output_path, "w") as f:
         yaml.dump(
             config,
             f,
@@ -110,16 +111,16 @@ def save_config_to_yaml(config, output_path):
             sort_keys=False,
             allow_unicode=True,
         )
-    
+
     print(f"Configuration saved to {output_path}")
 
 
 if __name__ == "__main__":
     # Generate the configuration
     config = generate_slac_variable_config()
-    
+
     # Save to the default location
     script_dir = Path(__file__).parent
     output_path = script_dir / "slac_variable_config.yaml"
-    
+
     save_config_to_yaml(config, output_path)
