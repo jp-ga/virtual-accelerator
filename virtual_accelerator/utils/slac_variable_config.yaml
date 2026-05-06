@@ -14,6 +14,14 @@ Quadrupole:
     unit: kG
     read_only: false
     variable_class: ScalarVariable
+  BCTRL.DRVL:
+    unit: kG
+    read_only: true
+    variable_class: ScalarVariable
+  BCTRL.DRVH:
+    unit: kG
+    read_only: true
+    variable_class: ScalarVariable
   BACT:
     unit: kG
     read_only: true
@@ -35,6 +43,14 @@ Solenoid:
   BCTRL:
     unit: kG-m
     read_only: false
+    variable_class: ScalarVariable
+  BCTRL.DRVL:
+    unit: kG
+    read_only: true
+    variable_class: ScalarVariable
+  BCTRL.DRVH:
+    unit: kG
+    read_only: true
     variable_class: ScalarVariable
   BACT:
     unit: kG-m
@@ -58,6 +74,14 @@ HorizontalCorrector:
     unit: kG-m
     read_only: false
     variable_class: ScalarVariable
+  BCTRL.DRVL:
+    unit: kG
+    read_only: true
+    variable_class: ScalarVariable
+  BCTRL.DRVH:
+    unit: kG
+    read_only: true
+    variable_class: ScalarVariable
   BACT:
     unit: kG-m
     read_only: true
@@ -79,6 +103,14 @@ VerticalCorrector:
   BCTRL:
     unit: kG-m
     read_only: false
+    variable_class: ScalarVariable
+  BCTRL.DRVL:
+    unit: kG
+    read_only: true
+    variable_class: ScalarVariable
+  BCTRL.DRVH:
+    unit: kG
+    read_only: true
     variable_class: ScalarVariable
   BACT:
     unit: kG-m
