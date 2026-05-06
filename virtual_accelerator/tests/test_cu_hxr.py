@@ -8,7 +8,7 @@ from virtual_accelerator.tests._bmad_model_test_utils import (
     assert_bmad_model_initialization,
     assert_bmad_model_twiss_outputs,
     assert_bmad_model_track_beam_custom_path,
-    assert_element_pvs_match_tao_lattice,
+    assert_magnet_pvs_match_tao_lattice,
     assert_screen_image_pvs_in_supported_variables,
 )
 from virtual_accelerator.models.cu_hxr import (
@@ -88,15 +88,15 @@ class TestCUHXRBmad:
 
     def test_quadrupole_pvs_match_tao_lattice(self):
         model = get_cu_hxr_bmad_model()
-        assert_element_pvs_match_tao_lattice(model, "Quadrupole")
+        assert_magnet_pvs_match_tao_lattice(model, "Quadrupole")
 
     def test_hkicker_pvs_match_tao_lattice(self):
         model = get_cu_hxr_bmad_model()
-        assert_element_pvs_match_tao_lattice(model, "HKicker")
+        assert_magnet_pvs_match_tao_lattice(model, "HKicker")
 
     def test_vkicker_pvs_match_tao_lattice(self):
         model = get_cu_hxr_bmad_model()
-        assert_element_pvs_match_tao_lattice(model, "VKicker")
+        assert_magnet_pvs_match_tao_lattice(model, "VKicker")
 
 
 @pytest.mark.skipif(

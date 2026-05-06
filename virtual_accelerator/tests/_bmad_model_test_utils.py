@@ -40,10 +40,10 @@ def assert_bmad_model_track_beam_custom_path(get_model) -> None:
     assert model is not None
 
 
-def assert_element_pvs_match_tao_lattice(
+def assert_magnet_pvs_match_tao_lattice(
     model,
     element_key: str,
-    element_attrs: tuple[str, ...] = ("BCTRL", "BACT", "BDES", "BMIN", "BMAX"),
+    element_attrs: tuple[str, ...] = ("BCTRL", "BACT", "BDES", "BMIN", "BMAX", "STATCTRLSUB.T", "CTRL"),
 ) -> None:
     """
     Verify that all lattice elements of a given type have corresponding PV mappings.
