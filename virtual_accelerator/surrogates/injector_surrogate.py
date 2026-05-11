@@ -308,8 +308,6 @@ class InjectorSurrogate(LUMEModel, FinalParticlesMixIn):
 
     def _set(self, values: Mapping[str, Any]) -> None:
         """Update model state and regenerate exported output beam."""
-        for name, value in values.items():
-            self._cache[name] = value
         self.model.set(dict(values))
         self.update_state()
 
