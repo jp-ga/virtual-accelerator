@@ -6,7 +6,7 @@ from typing import Any, Iterable, Mapping
 import numpy as np
 import yaml
 from lume.model import LUMEModel
-from lume.variables import ParticleGroupVariable
+from lume.staged_model import FinalParticlesMixIn
 from lume_torch.base import LUMETorchModel
 from lume_torch.models.torch_model import TorchModel
 from scipy import constants
@@ -104,7 +104,7 @@ def create_beam_distribution_from_state(state: Mapping[str, Any], n_particles: i
     return beam
 
 
-class BeamOutputModel(LUMEModel):
+class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
     """
     LUME wrapper around a surrogate model that adds an openPMD beam
     output variable based on a model predicting the beam covariance matrix.
@@ -136,7 +136,7 @@ class BeamOutputModel(LUMEModel):
         self.surrogate = LUMETorchModel(surrogate)
         self.n_particles = n_particles
         self.p0c = p0c
-        self._cache: dict[str, Any] = {}
+        self._cache: dict[str, Any] = {"output_beam": None}
         self.set({})  # Initializing with defaults of NN model
         self.update_state()
 
@@ -153,15 +153,11 @@ class BeamOutputModel(LUMEModel):
     @property
     def supported_variables(self) -> dict[str, Any]:
         """Return supported variables without mutating wrapped model metadata."""
-        variables = dict(self.surrogate.supported_variables)
-        variables["output_beam"] = ParticleGroupVariable(
-            name="output_beam", read_only=True
-        )
-        return variables
+        return self.surrogate.supported_variables
 
     def reset(self):
         self.surrogate.reset()
-        self._cache = {}
+        self._cache = {"output_beam": None}
 
     def update_state(self):
         """Update internal cache from surrogate model and regenerate output beam."""
@@ -194,8 +190,12 @@ class BeamOutputModel(LUMEModel):
         particle_group = beamphysics.ParticleGroup(data=data)
         self._cache["output_beam"] = particle_group
 
+    @property
+    def final_particles(self):
+        return self._cache["output_beam"]
 
-class InjectorSurrogate(LUMEModel):
+
+class InjectorSurrogate(LUMEModel, FinalParticlesMixIn):
     """LUME wrapper around the lcls injector torch surrogate with openPMD beam output."""
 
     # Config path relative to the project root (used when running from source)
@@ -316,15 +316,11 @@ class InjectorSurrogate(LUMEModel):
     @property
     def supported_variables(self) -> dict[str, Any]:
         """Return supported variables without mutating wrapped model metadata."""
-        variables = dict(self.model.supported_variables)
-        variables["output_beam"] = ParticleGroupVariable(
-            name="output_beam", read_only=True
-        )
-        return variables
+        return dict(self.model.supported_variables)
 
     def reset(self):
         self.model.reset()
-        self._cache = {}
+        self._cache = {"output_beam": None}
 
     def update_state(self):
         self._cache.update(self.model.get(list(self.model.supported_variables.keys())))
@@ -332,3 +328,7 @@ class InjectorSurrogate(LUMEModel):
         self._cache = {k: _to_python_scalar(v, k) for k, v in self._cache.items()}
         beam = create_beam_distribution_from_state(self._cache, self.n_particles)
         self._cache["output_beam"] = to_openpmd_particlegroup(beam)
+
+    @property
+    def final_particles(self):
+        return self._cache["output_beam"]
