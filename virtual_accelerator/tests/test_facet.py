@@ -26,9 +26,9 @@ class TestFACET2Bmad:
         assert_bmad_model_initialization(get_facet_bmad_model)
 
     def test_short_tracking(self):
-        model = get_facet_bmad_model(
+        get_facet_bmad_model(
             track_beam=True,
-            start_element="L0AFEND",
+            start_element="PR10241",
             end_element="PR10571",
             custom_beam_path=os.path.join(
                 Path(__file__).parent, "../beams", "2024-10-22_oneBunch.h5"

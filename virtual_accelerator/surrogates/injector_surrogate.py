@@ -6,7 +6,6 @@ from typing import Any, Iterable, Mapping
 import numpy as np
 import yaml
 from lume.model import LUMEModel
-from lume.variables import ParticleGroupVariable
 from lume.staged_model import FinalParticlesMixIn
 from lume_torch.base import LUMETorchModel
 from lume_torch.models.torch_model import TorchModel
@@ -206,7 +205,6 @@ class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
     def final_particles(self) -> beamphysics.ParticleGroup:
         """Return the final particle distribution as an openPMD ParticleGroup."""
         return self._cache["output_beam"]
-
 
 
 class InjectorSurrogate(LUMEModel, FinalParticlesMixIn):
