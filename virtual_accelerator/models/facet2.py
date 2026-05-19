@@ -32,7 +32,7 @@ def get_facet_bmad_model(
         mapping_beampath=None,
         screens=("PR10571", "PR10711"),
         profmon_config_filename="facet2_profmon_info.yaml",
-        default_beam_relpath="bmad/bmad_set_beam2000_pg",
+        default_beam_relpath="beams/2024-10-22_oneBunch.h5",
         default_track_start="PR10241",
     )
     return build_bmad_model(
