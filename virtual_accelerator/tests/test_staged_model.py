@@ -38,6 +38,7 @@ pytestmark = pytest.mark.skipif(
             "lume_bmad",
             "cheetah",
             "lume_cheetah",
+            "facet2_inj_ml_model",
         )
     ),
     reason="requires staged-model optional dependencies",
