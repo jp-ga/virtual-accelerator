@@ -192,7 +192,7 @@ class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
             "z": self.z0,
             "weight": _tensor_to_numpy(
                 torch.ones(self.n_particles)
-            ),  # need to make at least 1d and negate
+            ),  # need to make at least 1d
             "status": _tensor_to_numpy(
                 torch.ones(self.n_particles, dtype=torch.int32)
             ),  # need int

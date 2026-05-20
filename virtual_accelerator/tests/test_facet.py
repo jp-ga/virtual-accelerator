@@ -11,7 +11,10 @@ from virtual_accelerator.tests._bmad_model_test_utils import (
     assert_magnet_pvs_match_tao_lattice,
     assert_screen_image_pvs_in_supported_variables,
 )
-from virtual_accelerator.models.facet2 import get_facet_bmad_model
+from virtual_accelerator.models.facet2 import (
+    get_facet_bmad_model,
+    get_facet_staged_model,
+)
 
 
 HAS_FACET_LATTICE = bool(os.environ.get("FACET2_LATTICE"))
@@ -34,6 +37,10 @@ class TestFACET2Bmad:
                 Path(__file__).parent, "../beams", "2024-10-22_oneBunch.h5"
             ),
         )
+
+    def test_staged_model(self):
+        staged_model = get_facet_staged_model(end_element="PR10711")
+        staged_model.get(list(staged_model.supported_variables.keys()))
 
     def test_twiss(self):
         assert_bmad_model_twiss_outputs(get_facet_bmad_model)

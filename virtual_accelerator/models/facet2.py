@@ -1,16 +1,18 @@
+import os
+
 from virtual_accelerator.bmad.factory import BmadModelSpec, build_bmad_model
 
 
 def get_facet_bmad_model(
-    start_element="PR10241", end_element="END", track_beam=False, custom_beam_path=None
+    start_element="L0AFEND", end_element="END", track_beam=False, custom_beam_path=None
 ):
     """
-    Get the LUMEBmadModel for the FACET-II lattice from PRR10241 to END.
+    Get the LUMEBmadModel for the FACET-II lattice from L0AFEND to END.
 
     Parameters
     -------------
     start_element: str, optional
-        The starting element for the model. Default is "PR10241".
+        The starting element for the model. Default is "L0AFEND".
     end_element: str, optional
         The ending element for the model. Default is "END".
     track_beam: bool, optional
@@ -45,7 +47,7 @@ def get_facet_bmad_model(
     )
 
 
-def get_facet_staged_model(n_particles=1000, **kwargs):
+def get_facet_staged_model(n_particles=1000, surrogate_inputs="machine", **kwargs):
     """
     Get the StagedModel for the FACET-II lattice from PRR10241 to END, with an injector surrogate model.
 
@@ -53,6 +55,8 @@ def get_facet_staged_model(n_particles=1000, **kwargs):
     -------------
     n_particles: int, optional
         Number of particles to simulate in the surrogate model. Default is 1000.
+    surrogate_inputs: str, optional
+        Input for the surrogate model either "machine" or "sim". Default is "machine".
     **kwargs:
         Keyword arguments to be passed to the bmad LUMEModel instance as needed.
 
@@ -66,9 +70,16 @@ def get_facet_staged_model(n_particles=1000, **kwargs):
     from virtual_accelerator.models.facet2 import get_facet_bmad_model
     from lume.staged_model import StagedModel
 
-    injector_surrogate = BeamOutputModel(load_model("sim"), n_particles=n_particles)
+    injector_surrogate = BeamOutputModel(
+        load_model(surrogate_inputs), n_particles=n_particles
+    )
+
+    # need to provide a beam distribution file to initialize the bmad model
+    fname = os.getcwd() + "/input_beam.h5"
+    injector_surrogate.final_particles.write(fname)
+
     facet_bmad_model = get_facet_bmad_model(
-        start_element="PR10241", track_beam=True, **kwargs
+        start_element="PR10241", track_beam=True, custom_beam_path=fname, **kwargs
     )
 
     staged_model = StagedModel([injector_surrogate, facet_bmad_model])
