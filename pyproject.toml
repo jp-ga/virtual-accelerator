@@ -63,6 +63,7 @@ all = [
     "lume-impact @ git+https://github.com/ChristopherMayes/lume-impact",
     "lume-torch @ git+https://github.com/lume-science/lume-torch",
     "lume-pva @ git+https://github.com/lume-science/lume-pva",
+    "facet2_inj_ml_model @ git+https://github.com/slaclab/facet2_inj_ml_model",
 ]
 dev = [
     "pytest",

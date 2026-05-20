@@ -168,6 +168,6 @@ class TestStagedModelStaging:
         assert "a.beta" in result
         assert "b.beta" in result
 
-    def test_staged_model(self):
+    def test_facet_model(self):
         staged_model = get_facet_staged_model(end_element="PR10711")
         staged_model.get(list(staged_model.supported_variables.keys()))
