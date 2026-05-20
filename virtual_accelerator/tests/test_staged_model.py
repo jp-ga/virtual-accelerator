@@ -10,6 +10,10 @@ pytest.importorskip(
     "lume_torch",
     reason="requires lume-torch: pip install virtual-accelerator[surrogate]",
 )
+pytest.importorskip(
+    "facet2_inj_ml_model",
+    reason="requires facet2_inj_ml_model: pip install virtual-accelerator[surrogate]",
+)
 
 from virtual_accelerator.models.staged_model import (  # noqa: E402
     StagedModel,
