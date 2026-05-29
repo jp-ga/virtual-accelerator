@@ -69,7 +69,7 @@ def test_unsupported_initial_value_type_raises_value_error():
 def test_load_pv_values_from_csv_file(tmp_path):
     file_path = tmp_path / "pv_values.csv"
     file_path.write_text(
-        "PV:ONE,1.25\nPV:TWO,true\nPV:THREE,[1, 2, 3]\n", encoding="utf-8"
+        'PV:ONE,1.25\nPV:TWO,true\nPV:THREE,"[1, 2, 3]"\n', encoding="utf-8"
     )
 
     values = load_pv_values(str(file_path))
