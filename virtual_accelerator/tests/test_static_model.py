@@ -2,8 +2,7 @@ import numpy as np
 import pytest
 from lume.variables import NDVariable, ScalarVariable, StrVariable
 
-from virtual_accelerator.models import StaticVariableModel
-from virtual_accelerator.models.static_model import load_pv_values
+from virtual_accelerator.models.static_model import load_pv_values, StaticVariableModel
 
 
 def test_supported_variables_are_inferred_from_initial_values():
