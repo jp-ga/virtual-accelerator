@@ -67,9 +67,13 @@ class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
 
     def _set(self, values: Mapping[str, Any]) -> None:
         """Update model state and regenerate exported output beam."""
+        # handle updates to input variables
         for name, value in values.items():
             self._cache[name] = value
+
+        # update surrogate model with new input variables
         self.surrogate.set(dict(values))
+
         self.update_state()
 
     @property
@@ -86,6 +90,11 @@ class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
         self._cache.update(
             self.surrogate.get(list(self.surrogate.supported_variables.keys()))
         )
+        self._generate_output_beam()
+
+    def _generate_output_beam(self):
+        """Generate the output beam ParticleGroup from cached surrogate outputs and class attributes."""
+
         # get the covariance matrix from the cache
         # units and variable order: [x, px, y, py, z, pz]
         # units: [m, eV/c, m, eV/c, s, eV/c]
