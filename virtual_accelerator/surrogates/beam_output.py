@@ -10,6 +10,7 @@ from scipy import constants
 import beamphysics
 from distgen import Generator
 
+
 class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
     """
     LUME wrapper around a surrogate model that adds an openPMD beam
@@ -90,7 +91,7 @@ class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
         # units: [m, eV/c, m, eV/c, s, eV/c]
         covariance_matrix = self._cache["covariance_matrix"]
 
-        # convert covariance matrix time axis to z using speed of light units for the 
+        # convert covariance matrix time axis to z using speed of light units for the
         # surrogate and openPMD ParticleBeam convention
         scaled_covariance_matrix = covariance_matrix.clone()
         scaled_covariance_matrix[4, :] *= -constants.speed_of_light
@@ -98,22 +99,25 @@ class BeamOutputModel(LUMEModel, FinalParticlesMixIn):
 
         # reorder covariance matrix from surrogate variable order to openPMD ParticleBeam order
         # surrogate variable order: [x, px, y, py, z, pz]
-        mean = np.array([0.0, 0.0, 0.0, 0.0, self.z0, self.p0c], dtype=np.float32) # units: [m, eV/c, m, eV/c, m, eV/c]
+        mean = np.array(
+            [0.0, 0.0, 0.0, 0.0, self.z0, self.p0c], dtype=np.float32
+        )  # units: [m, eV/c, m, eV/c, m, eV/c]
         inputs = {
             "n_particle": self.n_particles,
             "species": "electron",
             "nd_gaussian_dist": {
                 "method": "cholesky",
                 "centroid": {
-                    "x": str(mean[0]) +" m", 
-                    "px": str(mean[1]) + " eV/c", 
-                    "y": str(mean[2]) + " m", 
-                    "py": str(mean[3]) +" eV/c",
-                    "z": str(mean[4]) +" m", 
-                    "pz": str(mean[5]) + " eV/c"},
+                    "x": str(mean[0]) + " m",
+                    "px": str(mean[1]) + " eV/c",
+                    "y": str(mean[2]) + " m",
+                    "py": str(mean[3]) + " eV/c",
+                    "z": str(mean[4]) + " m",
+                    "pz": str(mean[5]) + " eV/c",
+                },
                 "cov_matrix": scaled_covariance_matrix.tolist(),
             },
-            "start":{"tstart": str(self.t0) + " s", "type": "time"},
+            "start": {"tstart": str(self.t0) + " s", "type": "time"},
             "total_charge": str(self.total_charge) + " C",
         }
         # convert to yaml
