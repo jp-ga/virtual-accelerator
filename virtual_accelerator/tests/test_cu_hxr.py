@@ -111,7 +111,9 @@ class TestCUHXRBmad:
         assert_bpm_pvs_match_tao_lattice(model)
 
     def test_roundtrip_pv_get_set(self):
-        model = get_cu_hxr_bmad_model(custom_beam_path=TEST_BEAM_PATH, end_element="OTR4")
+        model = get_cu_hxr_bmad_model(
+            custom_beam_path=TEST_BEAM_PATH, end_element="OTR4"
+        )
         assert_roundtrip_pv_get_set(model)
 
 

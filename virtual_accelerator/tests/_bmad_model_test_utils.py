@@ -318,10 +318,14 @@ def assert_roundtrip_pv_get_set(
     )
 
     for pv_name in writable_supported_variables:
-        if pv_name is not "track_type":
+        if pv_name != "track_type":
             if isinstance(supported_variables[pv_name], ScalarVariable):
-                original_value = model.get(pv_name) + 0.001  # add small offset to ensure set does something
-                assert original_value != 0, f"Original value for {pv_name} is zero, cannot perform roundtrip test with offset"
+                original_value = (
+                    model.get(pv_name) + 0.001
+                )  # add small offset to ensure set does something
+                assert original_value != 0, (
+                    f"Original value for {pv_name} is zero, cannot perform roundtrip test with offset"
+                )
                 model.set({pv_name: original_value})
                 roundtrip_value = model.get(pv_name)
         assert_value_equal(pv_name, original_value, roundtrip_value)

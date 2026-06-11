@@ -120,7 +120,7 @@ class CUBmadTransformer(BmadTransformer):
                 return tao.ele_control_var(element_name)["IN_USE"]
         elif device_type in ["HKicker", "VKicker", "EFC", "Kicker"]:
             if attr in ["BCTRL", "BACT", "BDES"]:
-                return -10.0*tao.ele_gen_attribs(element_name)["BL_KICK"]
+                return -10.0 * tao.ele_gen_attribs(element_name)["BL_KICK"]
             elif attr == "BMIN" or attr == "BCTRL.DRVL":
                 return -10  # TODO: add logic for these limits
             elif attr == "BMAX" or attr == "BCTRL.DRVH":
