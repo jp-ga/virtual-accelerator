@@ -1,5 +1,3 @@
-import os
-
 from lume.staged_model import StagedModel
 
 
@@ -100,11 +98,12 @@ def get_cu_hxr_cheetah_model(n_particles: int = 1000):
         Instance of the LUMECheetahModel for the CU_HXR lattice.
     """
     import torch
-    from cheetah.accelerator import Segment
     from cheetah.particles import ParticleBeam
-    from lume_cheetah import LUMECheetahModel, CheetahSimulator
-    from virtual_accelerator.cheetah.utils import get_mad_control_mapping
-    from virtual_accelerator.cheetah.variables import get_variables_from_segment
+
+    from virtual_accelerator.cheetah.factory import (
+        CheetahModelSpec,
+        build_cheetah_model,
+    )
 
     # Get path to beam distributions
     # beam_dist = os.environ.get(
@@ -126,36 +125,14 @@ def get_cu_hxr_cheetah_model(n_particles: int = 1000):
     )
     incoming_beam.particle_charges = torch.tensor(1.0)
 
-    # Get path to lattice files
-    lcls_lattice = os.environ.get("LCLS_LATTICE")
-    if lcls_lattice is None:
-        raise ValueError("LCLS_LATTICE environment variable must be set")
-
-    # Create lattice from file
-    segment = Segment.from_lattice_json(
-        os.path.join(lcls_lattice, "cheetah/nc_hxr.json")
+    # Lattice and elements table both live under $LCLS_LATTICE; control names are
+    # derived from the table. No profmon config: the table's OTRS names already
+    # match the control system on this beampath, and the lattice's own screens
+    # carry physical resolutions.
+    spec = CheetahModelSpec(
+        feature="CU HXR Cheetah model",
+        lattice_env_var="LCLS_LATTICE",
+        lattice_relpath="cheetah/nc_hxr.json",
     )
 
-    # Define the simulator using lattice and particle beam
-    simulator = CheetahSimulator(
-        segment=segment,
-        initial_beam_distribution=incoming_beam,
-    )
-
-    # get control system device to cheetah mapping
-    database_path = os.path.join(
-        lcls_lattice, "bmad/conversion/from_oracle/lcls_elements.csv"
-    )
-    element_name_to_control_name = get_mad_control_mapping(database_path)
-
-    # Get supported control system variables
-    # for the model
-    variables = get_variables_from_segment(segment, element_name_to_control_name)
-
-    # Create model using action-based variable integration.
-    model = LUMECheetahModel(
-        simulator=simulator,
-        action_variables=list(variables.values()),
-    )
-
-    return model
+    return build_cheetah_model(spec, initial_beam_distribution=incoming_beam)
