@@ -117,6 +117,30 @@ class TestLatticeSources:
             from_dataclass.supported_variables
         )
 
+    def test_spec_fields_as_keywords_agree(self, lattice_json):
+        # A caller storing the recipe as flat kwargs splats it in directly.
+        config = {"lattice": lattice_json, "name_map": NAME_MAP}
+        from_kwargs = build_cheetah_model(**config, energy=1e8)
+        from_spec = build_cheetah_model(config, energy=1e8)
+
+        assert set(from_kwargs.supported_variables) == set(
+            from_spec.supported_variables
+        )
+
+    def test_spec_and_keywords_together_raise(self, lattice_json):
+        with pytest.raises(ValueError, match="one or the other"):
+            build_cheetah_model(
+                {"lattice": lattice_json}, name_map=NAME_MAP, energy=1e8
+            )
+
+    def test_no_spec_at_all_raises(self):
+        with pytest.raises(ValueError, match="requires a spec"):
+            build_cheetah_model(energy=1e8)
+
+    def test_unknown_spec_field_raises(self, lattice_json):
+        with pytest.raises(TypeError, match="not_a_field"):
+            build_cheetah_model(lattice=lattice_json, not_a_field=1, energy=1e8)
+
     def test_live_segment_is_used_directly(self, segment):
         model = build_cheetah_model(
             CheetahModelSpec(lattice=segment, name_map=NAME_MAP), energy=1e8

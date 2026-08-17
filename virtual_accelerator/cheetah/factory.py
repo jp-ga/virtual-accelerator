@@ -18,6 +18,11 @@ Two provenance routes, because two kinds of caller need different things:
   it without depending on external files -- what a self-contained checkpoint
   needs.
 
+The spec itself is accepted in three interchangeable forms -- the dataclass, a
+plain mapping of its fields, or those fields as keyword arguments -- so a caller
+that stores the spec as JSON (no dataclass instance to pickle) or as flat
+builder kwargs can call this factory without adapting its own record format.
+
 Screen naming
 -------------
 The elements table is the wrong authority for screen PVs on some beampaths: it
@@ -356,21 +361,23 @@ def apply_screen_geometry(
 
 
 def build_cheetah_model(
-    spec: "CheetahModelSpec | Mapping[str, Any]",
+    spec: "CheetahModelSpec | Mapping[str, Any] | None" = None,
     *,
     energy: float | None = None,
     initial_beam_distribution=None,
     initial_particle_group=None,
     element_attr_mapping: Mapping[str, Any] | None = None,
     dtype=None,
+    **spec_fields,
 ):
     """Build a lattice-specific ``LUMECheetahModel`` from a shared implementation.
 
     Parameters
     ----------
-    spec : CheetahModelSpec | Mapping[str, Any]
+    spec : CheetahModelSpec | Mapping[str, Any], optional
         Where the lattice and control-name mapping come from. A plain mapping of
-        the dataclass's fields is accepted so a spec can be stored as JSON.
+        the dataclass's fields is accepted so a spec can be stored as JSON. May
+        be omitted in favour of ``**spec_fields``.
     energy : float, optional
         Reference momentum p0c [eV/c], used only to build a placeholder incoming
         beam when neither ``initial_beam_distribution`` nor
@@ -384,6 +391,13 @@ def build_cheetah_model(
         package's SLAC variable configuration.
     dtype : torch.dtype, optional
         Data type for the lattice elements. Defaults to Cheetah's own default.
+    **spec_fields
+        :class:`CheetahModelSpec` fields passed individually, in place of
+        ``spec`` -- e.g. ``build_cheetah_model(lattice=..., name_map=...,
+        energy=...)``. Lets a caller whose stored recipe is flat keyword
+        arguments splat it straight in (``build_cheetah_model(**config,
+        energy=energy)``) without reshaping the record. An unrecognized field
+        raises ``TypeError``.
 
     Returns
     -------
@@ -398,6 +412,19 @@ def build_cheetah_model(
     lattice to build. Passing ``energy`` alone yields a single-particle
     placeholder at that reference momentum.
     """
+    if spec_fields:
+        if spec is not None:
+            raise ValueError(
+                f"build_cheetah_model got both a 'spec' and spec fields as keyword "
+                f"arguments ({', '.join(sorted(spec_fields))}); pass one or the other."
+            )
+        spec = spec_fields
+    if spec is None:
+        raise ValueError(
+            "build_cheetah_model requires a spec: pass a CheetahModelSpec, a mapping "
+            "of its fields, or those fields as keyword arguments."
+        )
+
     spec = _coerce_spec(spec)
 
     _check_optional_modules(_REQUIRED_MODULES, feature=spec.feature, extra="cheetah")
