@@ -1,16 +1,30 @@
 import tempfile
 
-from virtual_accelerator.bmad.actions import CavityPREQReadbackVariable
-from virtual_accelerator.bmad.factory import BmadModelSpec, build_bmad_model
-from lume_bmad.actions import EleScalarVariable
-from lume_bmad.model import LUMEBmadModel
+from copy import copy
 
 import logging
 
 logger = logging.getLogger(__name__)
 
+IMPACT_GROUP_PV_MAPPING = {
+    "group:L0AF_phase": {"pv": "KLYS:IN10:81:PDES", "element": "L0AF_entrance"},
+    "group:L0BF_phase": {"pv": "KLYS:IN10:41:PDES", "element": "L0BF_entrance"},
+    "group:L0AF_scale": {
+        "pv": "KLYS:IN10:81:ADES",
+        "scale": 1e6,
+        "element": "L0AF_entrance",
+    },
+    "group:L0BF_scale": {
+        "pv": "KLYS:IN10:41:ADES",
+        "scale": 1e6,
+        "element": "L0BF_entrance",
+    },
+    "group:GUNF_phase": {"pv": "KLYS:IN10:31:PDES", "element": "GUNF"},
+    "group:GUNF_scale": {"pv": "KLYS:IN10:31:ADES", "scale": 1e6, "element": "GUNF"},
+}
 
-def add_facet_custom_variables(model: LUMEBmadModel) -> None:
+
+def add_facet_custom_variables(model) -> None:
     """
     Add custom variables to the FACET-II model.
 
@@ -19,6 +33,9 @@ def add_facet_custom_variables(model: LUMEBmadModel) -> None:
     model : LUMEBmadModel
         The FACET-II model to which custom variables will be added.
     """
+    from virtual_accelerator.bmad.actions import CavityPREQReadbackVariable
+    from lume_bmad.actions import EleScalarVariable
+
     # Add the L0B RF phase feedback variable to the model if L0BF#1 is included in the model
     if "L0BF#1" in model.get("name"):
         logger.debug("Adding L0B RF phase feedback variable to the model.")
@@ -45,7 +62,7 @@ def get_facet_bmad_model(
     start_element="L0AFEND", end_element="END", track_beam=False, custom_beam_path=None
 ):
     """
-    Get the LUMEBmadModel for the FACET-II lattice from L0AFEND to END.
+    Get the LUMEBmadModel for the FACET-II lattice from `start_element` to `end_element`.
 
     Parameters
     -------------
@@ -75,6 +92,8 @@ def get_facet_bmad_model(
         - n_rf_steps=1000 for lcavity elements
         - is_on=false for fixer elements
     """
+    from virtual_accelerator.bmad.factory import BmadModelSpec, build_bmad_model
+
     custom_aliases = {
         "PR10241": "PROF:IN10:241",
         "PR10571": "PROF:IN10:571",
@@ -88,7 +107,7 @@ def get_facet_bmad_model(
         tao_init_relpath="bmad/models/f2_elec/tao.init",
         mapping_beampath=None,
         profmon_config_filename="facet2_profmon_info.yaml",
-        default_beam_relpath="beams/2024-10-22_oneBunch.h5",
+        default_beam_relpath="../beams/2024-10-22_oneBunch.h5",
         default_track_start="L0AFEND",
     )
     model = build_bmad_model(
@@ -154,3 +173,39 @@ def get_facet_staged_model(n_particles=10000, surrogate_inputs="machine", **kwar
     staged_model = StagedModel([injector_surrogate, facet_bmad_model])
 
     return staged_model
+
+
+def get_facet_impact_model(n_particles: int = 100, end_element="PR10571"):
+    from virtual_accelerator.impact.factory import (
+        ImpactModelSpec,
+        build_impact_model,
+        get_actions_from_groups,
+    )
+
+    spec = ImpactModelSpec(
+        lattice_env_var="FACET2_LATTICE",
+        distgen_file="distgen/models/f2e_inj/v0/distgen.yaml",
+        impact_yaml_file="impact/models/f2e_inj/v0/ImpactT.yaml",
+        profmon_config_filename="facet2_profmon_info.yaml",
+        n_particles=n_particles,
+        numprocs=1,
+        space_charge=False,
+        stop_location=end_element,
+    )
+    model = build_impact_model(spec)
+
+    # register custom actions for linac L0A and L0B sections
+    group_actions = get_actions_from_groups(model.impact_model.simulator, spec)
+
+    for action in group_actions:
+        old_name = copy(action.name)
+        action.name = IMPACT_GROUP_PV_MAPPING[old_name]["pv"]
+        action.scale = IMPACT_GROUP_PV_MAPPING[old_name].get("scale", 1.0)
+
+        if (
+            IMPACT_GROUP_PV_MAPPING[old_name]["element"]
+            in model.impact_model.simulator.ele
+        ):
+            model.register_impact_action_variable(action)
+
+    return model
