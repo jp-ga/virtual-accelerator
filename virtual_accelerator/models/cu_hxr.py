@@ -122,10 +122,14 @@ def get_cu_hxr_cheetah_model(n_particles: int = 1000):
         Instance of the LUMECheetahModel for the CU_HXR lattice.
     """
     import torch
-    from cheetah.accelerator import Segment
     from cheetah.particles import ParticleBeam
     from lume_cheetah import LUMECheetahModel, CheetahSimulator
     from virtual_accelerator.cheetah.variables import get_variables_from_segment
+
+    from virtual_accelerator.cheetah.factory import (
+        CheetahModelSpec,
+        build_cheetah_model,
+    )
 
     # Get path to beam distributions
     # beam_dist = os.environ.get(
@@ -171,9 +175,17 @@ def get_cu_hxr_cheetah_model(n_particles: int = 1000):
     model = LUMECheetahModel(
         simulator=simulator,
         action_variables=list(variables.values()),
+    # Lattice and elements table both live under $LCLS_LATTICE; control names are
+    # derived from the table. No profmon config: the table's OTRS names already
+    # match the control system on this beampath, and the lattice's own screens
+    # carry physical resolutions.
+    spec = CheetahModelSpec(
+        feature="CU HXR Cheetah model",
+        lattice_env_var="LCLS_LATTICE",
+        lattice_relpath="cheetah/nc_hxr.json",
     )
 
-    return model
+    return build_cheetah_model(spec, initial_beam_distribution=incoming_beam)
 
 
 def get_cu_inj_impact_model(n_particles: int = 100, end_element="OTR2"):
