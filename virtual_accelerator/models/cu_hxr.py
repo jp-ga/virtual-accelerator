@@ -123,6 +123,8 @@ def get_cu_hxr_cheetah_model(n_particles: int = 1000):
     """
     import torch
     from cheetah.particles import ParticleBeam
+    from lume_cheetah import LUMECheetahModel, CheetahSimulator
+    from virtual_accelerator.cheetah.variables import get_variables_from_segment
 
     from virtual_accelerator.cheetah.factory import (
         CheetahModelSpec,
@@ -149,6 +151,30 @@ def get_cu_hxr_cheetah_model(n_particles: int = 1000):
     )
     incoming_beam.particle_charges = torch.tensor(1.0)
 
+    # Get path to lattice files
+    lcls_lattice = os.environ.get("LCLS_LATTICE")
+    if lcls_lattice is None:
+        raise ValueError("LCLS_LATTICE environment variable must be set")
+
+    # Create lattice from file
+    segment = Segment.from_lattice_json(
+        os.path.join(lcls_lattice, "cheetah/nc_hxr.json")
+    )
+
+    # Define the simulator using lattice and particle beam
+    simulator = CheetahSimulator(
+        segment=segment,
+        initial_beam_distribution=incoming_beam,
+    )
+
+    # Get supported control system variables
+    # for the model
+    variables = get_variables_from_segment(segment)
+
+    # Create model using action-based variable integration.
+    model = LUMECheetahModel(
+        simulator=simulator,
+        action_variables=list(variables.values()),
     # Lattice and elements table both live under $LCLS_LATTICE; control names are
     # derived from the table. No profmon config: the table's OTRS names already
     # match the control system on this beampath, and the lattice's own screens
