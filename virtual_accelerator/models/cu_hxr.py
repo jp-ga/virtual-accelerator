@@ -170,22 +170,13 @@ def get_cu_hxr_cheetah_model(
         Instance of the LUMECheetahModel for the CU_HXR lattice.
     """
     import torch
+    from cheetah.accelerator import Segment
     from cheetah.particles import ParticleBeam
-    from lume_cheetah import LUMECheetahModel, CheetahSimulator
-    from virtual_accelerator.cheetah.variables import get_variables_from_segment
 
     from virtual_accelerator.cheetah.factory import (
         CheetahModelSpec,
         build_cheetah_model,
     )
-
-    # Get path to beam distributions
-    # beam_dist = os.environ.get(
-    #    'BEAM_DISTRIBUTION',
-    #    '/sdf/group/ad/sw/machine-learning/
-    # Linac-Simulation-Server/simulation_server/beams'
-    # )
-    # Create Cheetah particle Beam from file
 
     incoming_beam = ParticleBeam.from_twiss(
         beta_x=torch.tensor(9.34),
@@ -199,17 +190,10 @@ def get_cu_hxr_cheetah_model(
     )
     incoming_beam.particle_charges = torch.tensor(1.0)
 
-    # Get path to lattice files
     lcls_lattice = os.environ.get("LCLS_LATTICE")
     if lcls_lattice is None:
         raise ValueError("LCLS_LATTICE environment variable must be set")
 
-    # Create lattice from file
-    segment = Segment.from_lattice_json(
-        os.path.join(lcls_lattice, "cheetah/nc_hxr.json")
-    )
-
-    # check start mode and end mode arguments
     if start_mode not in ["beginning", "end"]:
         raise ValueError(
             f"Invalid start_mode: {start_mode}. Must be 'beginning' or 'end'."
@@ -217,7 +201,9 @@ def get_cu_hxr_cheetah_model(
     if end_mode not in ["beginning", "end"]:
         raise ValueError(f"Invalid end_mode: {end_mode}. Must be 'beginning' or 'end'.")
 
-    # get subsegment
+    segment = Segment.from_lattice_json(
+        os.path.join(lcls_lattice, "cheetah/nc_hxr.json")
+    )
     segment = segment.subcell(
         start=start_element.lower(),
         end=end_element.lower(),
@@ -225,28 +211,10 @@ def get_cu_hxr_cheetah_model(
         include_end=end_mode == "end",
     )
 
-    # Define the simulator using lattice and particle beam
-    simulator = CheetahSimulator(
-        segment=segment,
-        initial_beam_distribution=incoming_beam,
-    )
-
-    # Get supported control system variables
-    # for the model
-    variables = get_variables_from_segment(segment)
-
-    # Create model using action-based variable integration.
-    model = LUMECheetahModel(
-        simulator=simulator,
-        action_variables=list(variables.values()),
-    # Lattice and elements table both live under $LCLS_LATTICE; control names are
-    # derived from the table. No profmon config: the table's OTRS names already
-    # match the control system on this beampath, and the lattice's own screens
-    # carry physical resolutions.
     spec = CheetahModelSpec(
         feature="CU HXR Cheetah model",
+        lattice=segment,
         lattice_env_var="LCLS_LATTICE",
-        lattice_relpath="cheetah/nc_hxr.json",
     )
 
     return build_cheetah_model(spec, initial_beam_distribution=incoming_beam)
