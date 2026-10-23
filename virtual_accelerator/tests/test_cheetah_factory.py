@@ -112,9 +112,7 @@ class TestLatticeSources:
 
     def test_spec_and_keywords_together_raise(self, lattice_json):
         with pytest.raises(ValueError, match="one or the other"):
-            build_cheetah_model(
-                {"lattice": lattice_json}, feature="dup", energy=1e8
-            )
+            build_cheetah_model({"lattice": lattice_json}, feature="dup", energy=1e8)
 
     def test_no_spec_at_all_raises(self):
         with pytest.raises(ValueError, match="requires a spec"):
