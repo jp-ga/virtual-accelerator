@@ -10,32 +10,31 @@ resolve control names, build a simulator, instantiate action variables).
 Two provenance routes, because two kinds of caller need different things:
 
 - **On-disk**, like the Bmad factory: ``lattice_env_var`` + ``lattice_relpath``
-  locate the lattice under a lattice repository, and ``database_relpath`` locates
-  the LCLS elements table used to derive control names.
-- **Inline**: ``lattice`` takes a lattice-JSON *string* (or a live ``Segment``)
-  and ``name_map`` takes the element -> control-name mapping directly. Nothing is
-  read from the environment, so a caller that has serialized a model can rebuild
-  it without depending on external files -- what a self-contained checkpoint
-  needs.
+  locate the lattice under a lattice repository.
+- **Inline**: ``lattice`` takes a lattice-JSON *string* (or a live ``Segment``).
+  Nothing is read from the environment, so a caller that has serialized a model
+  can rebuild it without depending on external files -- what a self-contained
+  checkpoint needs.
+
+Control (PV) names are not supplied by this factory at all: each element's
+control name is read from its own ``metadata["alias"]`` entry in the lattice
+JSON by :func:`virtual_accelerator.cheetah.variables.get_variables_from_segment`.
+An element missing ``alias`` is skipped with a warning rather than failing the
+whole build.
 
 The spec itself is accepted in three interchangeable forms -- the dataclass, a
 plain mapping of its fields, or those fields as keyword arguments -- so a caller
 that stores the spec as JSON (no dataclass instance to pickle) or as flat
 builder kwargs can call this factory without adapting its own record format.
 
-Screen naming
--------------
-The elements table is the wrong authority for screen PVs on some beampaths: it
-lists ``PR10571`` as ``OTRS:IN10:571`` while the FACET control system (and its
-archived data) uses ``PROF:IN10:571``. The profmon configs under
-``virtual_accelerator/utils`` already carry the right names, so
-``profmon_config_filename`` overlays them onto the derived mapping.
-
-Only the **name** is taken from the profmon config by default. Its ``shape`` axis
-order is not consistent between tables (``facet2_profmon_info.yaml`` has
-``[1392, 1040]``, ``cu_hxr_profmon_info.yaml`` has ``[1040, 1392]``), so applying
-it blindly can transpose a screen; the lattice's own ``Screen.resolution`` is
-used instead unless ``screen_geometry=True`` is requested explicitly.
+Screen geometry
+---------------
+A screen's ``shape`` axis order is not consistent between profmon tables
+(``facet2_profmon_info.yaml`` has ``[1392, 1040]``, ``cu_hxr_profmon_info.yaml``
+has ``[1040, 1392]``), so applying it blindly can transpose a screen; the
+lattice's own ``Screen.resolution`` is used instead unless
+``screen_geometry=True`` requests the profmon config's ``shape``/``pixel_size``
+explicitly, via ``profmon_config_filename``.
 """
 
 import json
@@ -52,10 +51,6 @@ from virtual_accelerator.utils.optional_dependencies import import_optional
 
 logger = logging.getLogger(__name__)
 
-#: Location of the LCLS elements table within a lattice repository, matching
-#: :class:`virtual_accelerator.bmad.factory.BmadModelSpec`.
-DEFAULT_DATABASE_RELPATH = "bmad/conversion/from_oracle/lcls_elements.csv"
-
 _REQUIRED_MODULES = ("torch", "cheetah", "lume_cheetah.model", "lume_torch.variables")
 
 
@@ -64,10 +59,9 @@ class CheetahModelSpec:
     """Where a Cheetah model's ingredients come from.
 
     The lattice is supplied by exactly one of two routes: ``lattice`` (inline) or
-    ``lattice_env_var`` + ``lattice_relpath`` (on disk). The element ->
-    control-name mapping is assembled from up to four sources, each overriding
-    the previous: the elements table, ``name_map``, the profmon config's screen
-    names, then ``screens``.
+    ``lattice_env_var`` + ``lattice_relpath`` (on disk). Control (PV) names are
+    not part of the spec: each element supplies its own via
+    ``metadata["alias"]`` in the lattice JSON.
 
     Attributes
     ----------
@@ -80,30 +74,16 @@ class CheetahModelSpec:
         when it starts with ``{`` and as a path otherwise.
     lattice_env_var : str | None
         Environment variable holding the lattice repository root (e.g.
-        ``"LCLS_LATTICE"``). Used to resolve ``lattice_relpath`` and
-        ``database_relpath``.
+        ``"LCLS_LATTICE"``). Used to resolve ``lattice_relpath``.
     lattice_relpath : str | None
         Path of the lattice JSON relative to the lattice repository root (e.g.
         ``"cheetah/nc_hxr.json"``).
-    database_path : str | None
-        Explicit path to the LCLS elements CSV, bypassing
-        ``lattice_env_var`` / ``database_relpath``.
-    database_relpath : str | None
-        Path of the elements CSV relative to the lattice repository root. Set to
-        ``None`` to skip table-derived names entirely (an inline ``name_map``
-        must then supply them).
-    name_map : Mapping[str, str] | None
-        Explicit element name -> control-name (PV prefix) mapping, e.g.
-        ``{"QE10525": "QUAD:IN10:525"}``. Overrides the elements table.
     profmon_config_filename : str | None
         Profmon config in ``virtual_accelerator/utils`` (e.g.
-        ``"facet2_profmon_info.yaml"``) whose ``name`` entries override screen
-        control names.
-    screens : Mapping[str, str] | None
-        Screen element name -> control name, applied last. Escape hatch for
-        screens no table covers.
+        ``"facet2_profmon_info.yaml"``) supplying screen geometry
+        (``shape``/``pixel_size``) when ``screen_geometry=True``.
     screen_geometry : bool
-        When ``True``, also initialize each mapped screen's ``resolution`` and
+        When ``True``, initialize each screen's ``resolution`` and
         ``pixel_size`` from the profmon config, overwriting the lattice values.
         Off by default -- see this module's docstring on axis order.
     """
@@ -112,11 +92,7 @@ class CheetahModelSpec:
     lattice: Any = None
     lattice_env_var: str | None = None
     lattice_relpath: str | None = None
-    database_path: str | None = None
-    database_relpath: str | None = DEFAULT_DATABASE_RELPATH
-    name_map: Mapping[str, str] | None = None
     profmon_config_filename: str | None = None
-    screens: Mapping[str, str] | None = None
     screen_geometry: bool = False
 
 
@@ -147,7 +123,7 @@ def _lattice_root(spec: CheetahModelSpec) -> str | None:
     if root is None:
         raise ValueError(
             f"{spec.feature} requires the {spec.lattice_env_var} environment "
-            f"variable to be set, or an inline lattice / name_map."
+            f"variable to be set, or an inline lattice."
         )
     return root
 
@@ -203,15 +179,6 @@ def _resolve_segment(spec: CheetahModelSpec, dtype):
     )
 
 
-def _resolve_database_path(spec: CheetahModelSpec) -> str | None:
-    """Locate the LCLS elements CSV, or ``None`` when not configured."""
-    if spec.database_path is not None:
-        return spec.database_path
-    if spec.database_relpath is None or spec.lattice_env_var is None:
-        return None
-    return os.path.join(_lattice_root(spec), spec.database_relpath)
-
-
 def load_profmon_config(filename: str) -> dict[str, dict[str, Any]]:
     """Load a profmon config shipped in ``virtual_accelerator/utils``.
 
@@ -230,74 +197,6 @@ def load_profmon_config(filename: str) -> dict[str, dict[str, Any]]:
         path = Path(__file__).parent.parent / "utils" / filename
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
-
-
-def resolve_device_mapping(
-    spec: "CheetahModelSpec | Mapping[str, Any]",
-    profmon_config: Mapping[str, Mapping[str, Any]] | None = None,
-) -> dict[str, str]:
-    """Assemble the element name -> control-name mapping described by ``spec``.
-
-    Sources are layered, each overriding the last: the LCLS elements table, then
-    ``spec.name_map``, then the profmon config's screen ``name`` entries, then
-    ``spec.screens`` -- general to specific.
-
-    Parameters
-    ----------
-    spec : CheetahModelSpec | Mapping[str, Any]
-        Model spec (dataclass or field mapping).
-    profmon_config : Mapping[str, Mapping[str, Any]], optional
-        Pre-loaded profmon config; loaded from ``spec.profmon_config_filename``
-        when omitted.
-
-    Returns
-    -------
-    dict[str, str]
-        Mapping of element name -> control-system PV prefix.
-
-    Raises
-    ------
-    ValueError
-        If no source supplies any names.
-    """
-    spec = _coerce_spec(spec)
-
-    mapping: dict[str, str] = {}
-
-    database_path = _resolve_database_path(spec)
-    if database_path is not None:
-        from virtual_accelerator.cheetah.utils import get_mad_control_mapping
-
-        # Let a missing file raise: silently falling back to an empty table would
-        # surface much later as "element not found in device mapping" warnings.
-        mapping.update(get_mad_control_mapping(database_path))
-
-    if spec.name_map:
-        mapping.update(spec.name_map)
-
-    if profmon_config is None and spec.profmon_config_filename is not None:
-        profmon_config = load_profmon_config(spec.profmon_config_filename)
-    if profmon_config:
-        # Name only: the config's `shape` axis order varies between tables.
-        mapping.update(
-            {
-                element_name: screen["name"]
-                for element_name, screen in profmon_config.items()
-                if screen.get("name")
-            }
-        )
-
-    if spec.screens:
-        mapping.update(spec.screens)
-
-    if not mapping:
-        raise ValueError(
-            f"{spec.feature} resolved an empty element -> control-name mapping. "
-            f"Supply 'name_map', or point 'database_path' / 'lattice_env_var' + "
-            f"'database_relpath' at an LCLS elements table."
-        )
-
-    return mapping
 
 
 def apply_screen_geometry(
@@ -375,9 +274,9 @@ def build_cheetah_model(
     Parameters
     ----------
     spec : CheetahModelSpec | Mapping[str, Any], optional
-        Where the lattice and control-name mapping come from. A plain mapping of
-        the dataclass's fields is accepted so a spec can be stored as JSON. May
-        be omitted in favour of ``**spec_fields``.
+        Where the lattice comes from. A plain mapping of the dataclass's fields
+        is accepted so a spec can be stored as JSON. May be omitted in favour of
+        ``**spec_fields``.
     energy : float, optional
         Reference momentum p0c [eV/c], used only to build a placeholder incoming
         beam when neither ``initial_beam_distribution`` nor
@@ -393,10 +292,10 @@ def build_cheetah_model(
         Data type for the lattice elements. Defaults to Cheetah's own default.
     **spec_fields
         :class:`CheetahModelSpec` fields passed individually, in place of
-        ``spec`` -- e.g. ``build_cheetah_model(lattice=..., name_map=...,
-        energy=...)``. Lets a caller whose stored recipe is flat keyword
-        arguments splat it straight in (``build_cheetah_model(**config,
-        energy=energy)``) without reshaping the record. An unrecognized field
+        ``spec`` -- e.g. ``build_cheetah_model(lattice=..., energy=...)``. Lets
+        a caller whose stored recipe is flat keyword arguments splat it
+        straight in (``build_cheetah_model(**config, energy=energy)``) without
+        reshaping the record. An unrecognized field
         raises ``TypeError``.
 
     Returns
@@ -452,8 +351,6 @@ def build_cheetah_model(
             )
         apply_screen_geometry(segment, profmon_config)
 
-    device_mapping = resolve_device_mapping(spec, profmon_config=profmon_config)
-
     if initial_beam_distribution is None and initial_particle_group is None:
         if energy is None:
             raise ValueError(
@@ -474,7 +371,6 @@ def build_cheetah_model(
 
     variables = get_variables_from_segment(
         segment,
-        device_mapping,
         element_attr_mapping=element_attr_mapping,
     )
 
@@ -488,8 +384,8 @@ def build_cheetah_model_from_json(path: str, **kwargs):
     """Build a model from a JSON file holding :class:`CheetahModelSpec` fields.
 
     Convenience for the inline route: the JSON object's keys are the spec's field
-    names, so a lattice and its name map can be checked in as data rather than as
-    a Python entry point.
+    names, so a lattice can be checked in as data rather than as a Python entry
+    point.
 
     Parameters
     ----------

@@ -19,13 +19,10 @@ if HAS_CHEETAH_DEPS:
         build_cheetah_model,
         build_cheetah_model_from_json,
         load_profmon_config,
-        resolve_device_mapping,
     )
 else:
     pytest.skip("requires cheetah optional dependencies", allow_module_level=True)
 
-
-NAME_MAP = {"Q1": "QUAD:IN10:511", "PR1": "OTRS:IN10:571"}
 
 PROFMON_YAML = """PR1:
    name: PROF:IN10:571
@@ -33,12 +30,6 @@ PROFMON_YAML = """PR1:
    - 128
    - 96
    pixel_size: 11.1732
-"""
-
-# Minimal stand-in for the LCLS elements table read by get_mad_control_mapping.
-ELEMENTS_CSV = """Element,Control System Name
-Q1,QUAD:IN10:511
-PR1,OTRS:IN10:571
 """
 
 
@@ -50,6 +41,7 @@ def segment():
                 name="Q1",
                 length=torch.tensor(0.5),
                 k1=torch.tensor(1.0),
+                metadata={"alias": "QUAD:IN10:511"},
             ),
             Drift(name="D1", length=torch.tensor(1.0)),
             Screen(
@@ -57,6 +49,7 @@ def segment():
                 resolution=(64, 48),
                 pixel_size=torch.tensor((5e-6, 5e-6)),
                 is_active=True,
+                metadata={"alias": "OTRS:IN10:571"},
             ),
         ],
         name="TEST",
@@ -82,19 +75,11 @@ def profmon_path(tmp_path):
     return path
 
 
-@pytest.fixture
-def database_path(tmp_path):
-    path = tmp_path / "lcls_elements.csv"
-    path.write_text(ELEMENTS_CSV)
-    return path
-
-
 class TestLatticeSources:
     def test_inline_json_spec_is_json_pure(self, lattice_json):
         spec = {
             "feature": "test model",
             "lattice": lattice_json,
-            "name_map": NAME_MAP,
         }
         # A spec that survives json round-tripping is one a serialized model can
         # carry without pickling anything.
@@ -106,11 +91,9 @@ class TestLatticeSources:
         assert "OTRS:IN10:571:Image:ArrayData" in model.supported_variables
 
     def test_dict_and_dataclass_specs_agree(self, lattice_json):
-        from_dict = build_cheetah_model(
-            {"lattice": lattice_json, "name_map": NAME_MAP}, energy=1e8
-        )
+        from_dict = build_cheetah_model({"lattice": lattice_json}, energy=1e8)
         from_dataclass = build_cheetah_model(
-            CheetahModelSpec(lattice=lattice_json, name_map=NAME_MAP), energy=1e8
+            CheetahModelSpec(lattice=lattice_json), energy=1e8
         )
 
         assert set(from_dict.supported_variables) == set(
@@ -119,7 +102,7 @@ class TestLatticeSources:
 
     def test_spec_fields_as_keywords_agree(self, lattice_json):
         # A caller storing the recipe as flat kwargs splats it in directly.
-        config = {"lattice": lattice_json, "name_map": NAME_MAP}
+        config = {"lattice": lattice_json}
         from_kwargs = build_cheetah_model(**config, energy=1e8)
         from_spec = build_cheetah_model(config, energy=1e8)
 
@@ -130,7 +113,7 @@ class TestLatticeSources:
     def test_spec_and_keywords_together_raise(self, lattice_json):
         with pytest.raises(ValueError, match="one or the other"):
             build_cheetah_model(
-                {"lattice": lattice_json}, name_map=NAME_MAP, energy=1e8
+                {"lattice": lattice_json}, feature="dup", energy=1e8
             )
 
     def test_no_spec_at_all_raises(self):
@@ -142,15 +125,13 @@ class TestLatticeSources:
             build_cheetah_model(lattice=lattice_json, not_a_field=1, energy=1e8)
 
     def test_live_segment_is_used_directly(self, segment):
-        model = build_cheetah_model(
-            CheetahModelSpec(lattice=segment, name_map=NAME_MAP), energy=1e8
-        )
+        model = build_cheetah_model(CheetahModelSpec(lattice=segment), energy=1e8)
 
         assert model.simulator.segment is segment
 
     def test_lattice_path_is_loaded(self, lattice_path):
         model = build_cheetah_model(
-            CheetahModelSpec(lattice=str(lattice_path), name_map=NAME_MAP), energy=1e8
+            CheetahModelSpec(lattice=str(lattice_path)), energy=1e8
         )
 
         assert "QUAD:IN10:511:BCTRL" in model.supported_variables
@@ -161,8 +142,6 @@ class TestLatticeSources:
             CheetahModelSpec(
                 lattice_env_var="TEST_LATTICE_ROOT",
                 lattice_relpath=lattice_path.name,
-                database_relpath=None,
-                name_map=NAME_MAP,
             ),
             energy=1e8,
         )
@@ -171,9 +150,7 @@ class TestLatticeSources:
 
     def test_spec_json_file(self, lattice_json, tmp_path):
         spec_path = tmp_path / "spec.json"
-        spec_path.write_text(
-            json.dumps({"lattice": lattice_json, "name_map": NAME_MAP})
-        )
+        spec_path.write_text(json.dumps({"lattice": lattice_json}))
 
         model = build_cheetah_model_from_json(str(spec_path), energy=1e8)
 
@@ -193,80 +170,29 @@ class TestLatticeSources:
 
     def test_no_lattice_raises(self):
         with pytest.raises(ValueError, match="no lattice"):
-            build_cheetah_model(CheetahModelSpec(name_map=NAME_MAP), energy=1e8)
+            build_cheetah_model(CheetahModelSpec(), energy=1e8)
 
     def test_non_lattice_type_raises(self):
         with pytest.raises(TypeError, match="lattice"):
-            build_cheetah_model(
-                CheetahModelSpec(lattice=42, name_map=NAME_MAP), energy=1e8
-            )
+            build_cheetah_model(CheetahModelSpec(lattice=42), energy=1e8)
 
 
-class TestDeviceMapping:
-    def test_names_from_elements_table(self, database_path):
-        mapping = resolve_device_mapping(
-            CheetahModelSpec(database_path=str(database_path))
+class TestControlNames:
+    def test_elements_without_alias_are_skipped(self):
+        # No `alias` in metadata: the element is skipped with a warning rather
+        # than failing the whole build.
+        segment = Segment(
+            [
+                Quadrupole(name="Q1", length=torch.tensor(0.5), k1=torch.tensor(1.0)),
+                Drift(name="D1", length=torch.tensor(1.0)),
+            ],
+            name="TEST",
         )
 
-        assert mapping == {"Q1": "QUAD:IN10:511", "PR1": "OTRS:IN10:571"}
+        with pytest.warns(UserWarning, match="alias"):
+            model = build_cheetah_model(CheetahModelSpec(lattice=segment), energy=1e8)
 
-    def test_missing_elements_table_raises(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            resolve_device_mapping(
-                CheetahModelSpec(database_path=str(tmp_path / "absent.csv"))
-            )
-
-    def test_precedence_table_then_name_map_then_profmon_then_screens(
-        self, database_path, profmon_path
-    ):
-        # The table says OTRS, the profmon config says PROF: the profmon name is
-        # what the FACET control system (and its archived data) actually uses.
-        mapping = resolve_device_mapping(
-            CheetahModelSpec(
-                database_path=str(database_path),
-                profmon_config_filename=str(profmon_path),
-            )
-        )
-        assert mapping["PR1"] == "PROF:IN10:571"
-
-        # name_map overrides the table but not the profmon screen name...
-        mapping = resolve_device_mapping(
-            CheetahModelSpec(
-                database_path=str(database_path),
-                name_map={"Q1": "QUAD:LI10:1", "PR1": "FROM:NAME:MAP"},
-                profmon_config_filename=str(profmon_path),
-            )
-        )
-        assert mapping["Q1"] == "QUAD:LI10:1"
-        assert mapping["PR1"] == "PROF:IN10:571"
-
-        # ...and `screens` overrides everything, as the documented escape hatch.
-        mapping = resolve_device_mapping(
-            CheetahModelSpec(
-                database_path=str(database_path),
-                name_map={"PR1": "FROM:NAME:MAP"},
-                profmon_config_filename=str(profmon_path),
-                screens={"PR1": "FROM:SCREENS:1"},
-            )
-        )
-        assert mapping["PR1"] == "FROM:SCREENS:1"
-
-    def test_empty_mapping_raises(self, lattice_json):
-        with pytest.raises(ValueError, match="empty element"):
-            build_cheetah_model(CheetahModelSpec(lattice=lattice_json), energy=1e8)
-
-    def test_profmon_renames_screen_pvs(self, lattice_json, profmon_path):
-        model = build_cheetah_model(
-            CheetahModelSpec(
-                lattice=lattice_json,
-                name_map=NAME_MAP,
-                profmon_config_filename=str(profmon_path),
-            ),
-            energy=1e8,
-        )
-
-        assert "PROF:IN10:571:Image:ArrayData" in model.supported_variables
-        assert "OTRS:IN10:571:Image:ArrayData" not in model.supported_variables
+        assert model.supported_variables == {}
 
     def test_shipped_profmon_config_is_loadable(self):
         config = load_profmon_config("facet2_profmon_info.yaml")
@@ -279,16 +205,15 @@ class TestScreenGeometry:
         model = build_cheetah_model(
             CheetahModelSpec(
                 lattice=lattice_json,
-                name_map=NAME_MAP,
                 profmon_config_filename=str(profmon_path),
             ),
             energy=1e8,
         )
 
-        # Only the name is taken from the profmon config: its shape axis order is
-        # not consistent across tables, so geometry stays with the lattice.
+        # Geometry is left untouched unless `screen_geometry=True`: its shape
+        # axis order is not consistent across profmon tables.
         assert tuple(model.simulator.segment.PR1.resolution) == (64, 48)
-        assert model.supported_variables["PROF:IN10:571:Image:ArrayData"].shape == (
+        assert model.supported_variables["OTRS:IN10:571:Image:ArrayData"].shape == (
             64,
             48,
         )
@@ -297,7 +222,6 @@ class TestScreenGeometry:
         model = build_cheetah_model(
             CheetahModelSpec(
                 lattice=lattice_json,
-                name_map=NAME_MAP,
                 profmon_config_filename=str(profmon_path),
                 screen_geometry=True,
             ),
@@ -308,24 +232,20 @@ class TestScreenGeometry:
         assert tuple(screen.resolution) == (128, 96)
         # Config is in micrometers, Cheetah in meters.
         assert float(screen.pixel_size[0]) == pytest.approx(11.1732e-6)
-        assert model.supported_variables["PROF:IN10:571:Image:ArrayData"].shape == (
+        assert model.supported_variables["OTRS:IN10:571:Image:ArrayData"].shape == (
             128,
             96,
         )
         # RESOLUTION reads back in micrometers, matching the config.
-        assert float(model.get("PROF:IN10:571:RESOLUTION")) == pytest.approx(
+        assert float(model.get("OTRS:IN10:571:RESOLUTION")) == pytest.approx(
             11.1732, rel=1e-6
         )
-        assert tuple(model.get("PROF:IN10:571:Image:ArrayData").shape) == (128, 96)
+        assert tuple(model.get("OTRS:IN10:571:Image:ArrayData").shape) == (128, 96)
 
     def test_screen_geometry_without_profmon_raises(self, lattice_json):
         with pytest.raises(ValueError, match="screen_geometry"):
             build_cheetah_model(
-                CheetahModelSpec(
-                    lattice=lattice_json,
-                    name_map=NAME_MAP,
-                    screen_geometry=True,
-                ),
+                CheetahModelSpec(lattice=lattice_json, screen_geometry=True),
                 energy=1e8,
             )
 
@@ -339,7 +259,7 @@ class TestScreenGeometry:
 class TestIncomingBeam:
     def test_energy_builds_placeholder_beam(self, lattice_json):
         model = build_cheetah_model(
-            CheetahModelSpec(lattice=lattice_json, name_map=NAME_MAP), energy=1.25e8
+            CheetahModelSpec(lattice=lattice_json), energy=1.25e8
         )
 
         assert float(model.simulator.initial_beam_distribution.energy) == 1.25e8
@@ -353,7 +273,7 @@ class TestIncomingBeam:
         )
 
         model = build_cheetah_model(
-            CheetahModelSpec(lattice=lattice_json, name_map=NAME_MAP),
+            CheetahModelSpec(lattice=lattice_json),
             initial_beam_distribution=beam,
         )
 
@@ -364,15 +284,13 @@ class TestIncomingBeam:
 
     def test_no_beam_and_no_energy_raises(self, lattice_json):
         with pytest.raises(ValueError, match="incoming beam"):
-            build_cheetah_model(
-                CheetahModelSpec(lattice=lattice_json, name_map=NAME_MAP)
-            )
+            build_cheetah_model(CheetahModelSpec(lattice=lattice_json))
 
 
 class TestElementAttrMapping:
     def test_explicit_mapping_limits_variables(self, lattice_json):
         model = build_cheetah_model(
-            CheetahModelSpec(lattice=lattice_json, name_map=NAME_MAP),
+            CheetahModelSpec(lattice=lattice_json),
             energy=1e8,
             element_attr_mapping={"Quadrupole": {"BCTRL": "QuadrupoleBCTRLVariable"}},
         )
