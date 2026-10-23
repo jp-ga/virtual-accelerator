@@ -237,10 +237,13 @@ class TestScreenGeometry:
             96,
         )
         # RESOLUTION reads back in micrometers, matching the config.
-        assert float(model.get("OTRS:IN10:571:RESOLUTION")) == pytest.approx(
+        assert float(model.get_value("OTRS:IN10:571:RESOLUTION")) == pytest.approx(
             11.1732, rel=1e-6
         )
-        assert tuple(model.get("OTRS:IN10:571:Image:ArrayData").shape) == (128, 96)
+        assert tuple(model.get_value("OTRS:IN10:571:Image:ArrayData").shape) == (
+            128,
+            96,
+        )
 
     def test_screen_geometry_without_profmon_raises(self, lattice_json):
         with pytest.raises(ValueError, match="screen_geometry"):
